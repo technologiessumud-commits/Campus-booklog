@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Campus Plug — Book Log</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyC76A70XnZ4hGQ1uFnosbP2Okj7WeSa9Rg",
+    authDomain: "campus-plug-booklog.firebaseapp.com",
+    projectId: "campus-plug-booklog",
+    storageBucket: "campus-plug-booklog.firebasestorage.app",
+    messagingSenderId: "468017988399",
+    appId: "1:468017988399:web:2685bb19ae22f5ff1897da",
+    measurementId: "G-7Y0HNP05FG"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+
+  // Expose to window for use by non-module scripts
+  window._db = db;
+  window._storage = storage;
+  window._fb = { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, orderBy, serverTimestamp, ref, uploadBytes, getDownloadURL };
+
+  window.dispatchEvent(new Event("firebase-ready"));
+</script>
+
+<style>
+:root {
+  --bg: #0d0f1a;
+  --bg2: #12152a;
+  --bg3: #1a1f38;
+  --card: #161b2e;
+  --border: rgba(255,255,255,0.07);
+  --gold: #f5c842;
+  --gold2: #e6b800;
+  --green: #22d68a;
+  --red: #f5605a;
+  --blue: #4f8ef7;
+  --text: #e8ecf5;
+  --muted: #7a85a3;
+  --radius: 14px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --font-head: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  display: flex;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 240px;
+  min-height: 100vh;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 28px 0;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 24px 28px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.logo-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.logo-text { font-family: var(--font-head); font-weight: 700; font-size: 15px; line-height: 1.2; }
+.logo-text span { display: block; font-size: 10px; font-weight: 400; color: var(--muted); letter-spacing: 0.1em; }
+
+.nav-group { padding: 0 12px; margin-bottom: 4px; }
+.nav-label { font-size: 10px; font-weight: 600; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; padding: 0 12px; margin-bottom: 6px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13.5px; font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.18s;
+  user-select: none;
+}
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: rgba(245,200,66,0.12); color: var(--gold); }
+.nav-item svg { flex-shrink: 0; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--gold);
+  color: #000;
+  font-size: 10px; font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 20px;
+  min-width: 20px; text-align: center;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+  padding: 20px 24px 0;
+  border-top: 1px solid var(--border);
+}
+.sync-status {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--muted);
+}
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+
+/* MAIN */
+.main {
+  margin-left: 240px;
+  flex: 1;
+  padding: 32px 36px;
+  min-height: 100vh;
+}
+
+/* TOPBAR */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 32px;
+}
+.page-title { font-family: var(--font-head); font-size: 24px; font-weight: 700; }
+.page-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.topbar-actions { display: flex; gap: 10px; }
+
+/* BUTTONS */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  font-size: 13.5px; font-weight: 600;
+  cursor: pointer; border: none;
+  transition: all 0.18s;
+  font-family: var(--font-body);
+}
+.btn-primary { background: var(--gold); color: #000; }
+.btn-primary:hover { background: var(--gold2); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(245,200,66,0.3); }
+.btn-ghost { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--card); }
+.btn-danger { background: rgba(245,96,90,0.15); color: var(--red); border: 1px solid rgba(245,96,90,0.25); }
+.btn-danger:hover { background: rgba(245,96,90,0.25); }
+.btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+.btn-icon { width: 34px; height: 34px; padding: 0; justify-content: center; border-radius: 9px; }
+
+/* STATS GRID */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+}
+.stat-card.gold::before { background: linear-gradient(90deg, var(--gold), transparent); }
+.stat-card.green::before { background: linear-gradient(90deg, var(--green), transparent); }
+.stat-card.blue::before { background: linear-gradient(90deg, var(--blue), transparent); }
+.stat-card.red::before { background: linear-gradient(90deg, var(--red), transparent); }
+.stat-icon {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 14px; font-size: 18px;
+}
+.stat-icon.gold { background: rgba(245,200,66,0.12); }
+.stat-icon.green { background: rgba(34,214,138,0.12); }
+.stat-icon.blue { background: rgba(79,142,247,0.12); }
+.stat-icon.red { background: rgba(245,96,90,0.12); }
+.stat-label { font-size: 11.5px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.stat-value { font-family: var(--font-head); font-size: 26px; font-weight: 700; }
+.stat-value.gold { color: var(--gold); }
+.stat-value.green { color: var(--green); }
+.stat-value.blue { color: var(--blue); }
+.stat-value.red { color: var(--red); }
+.stat-meta { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+
+/* CHARTS */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.chart-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+}
+.chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.chart-title { font-family: var(--font-head); font-size: 15px; font-weight: 600; }
+.chart-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+/* SECTION */
+.section-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.section-title { font-family: var(--font-head); font-size: 15px; font-weight: 600; }
+
+/* FILTER BAR */
+.filter-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.search-box {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 8px 12px;
+  flex: 1; min-width: 180px;
+}
+.search-box input {
+  background: none; border: none; outline: none;
+  color: var(--text); font-size: 13px; font-family: var(--font-body);
+  width: 100%;
+}
+.filter-select {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font-body);
+  outline: none; cursor: pointer;
+}
+
+/* TABLE */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 11px; font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tbody td {
+  padding: 14px 16px;
+  font-size: 13.5px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: middle;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: rgba(255,255,255,0.025); }
+
+.amount-val { font-family: var(--font-head); font-weight: 600; }
+.amount-pos { color: var(--green); }
+.amount-neg { color: var(--red); }
+
+/* BADGE */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11.5px; font-weight: 600;
+  white-space: nowrap;
+}
+.badge-paid { background: rgba(34,214,138,0.12); color: var(--green); }
+.badge-pending { background: rgba(245,200,66,0.12); color: var(--gold); }
+.badge-partial { background: rgba(79,142,247,0.12); color: var(--blue); }
+.badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* RECEIPT THUMB */
+.receipt-thumb {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: transform 0.2s;
+}
+.receipt-thumb:hover { transform: scale(1.1); }
+.no-receipt {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: var(--bg3);
+  border: 1px dashed var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 14px;
+}
+
+/* AVATAR */
+.avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), #e06c00);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #000;
+  flex-shrink: 0;
+}
+
+/* MODAL */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+  z-index: 500;
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  width: 100%; max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow);
+  animation: slideUp 0.22s ease;
+}
+.modal-wide { max-width: 700px; }
+@keyframes slideUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 22px 24px;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--card); z-index: 1;
+}
+.modal-title { font-family: var(--font-head); font-size: 17px; font-weight: 700; }
+.modal-body { padding: 24px; }
+.modal-footer {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+}
+
+/* FORMS */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-group { display: flex; flex-direction: column; gap: 7px; }
+.form-group.full { grid-column: 1 / -1; }
+label { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+.form-control {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 13.5px;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color 0.18s;
+  width: 100%;
+}
+.form-control:focus { border-color: var(--gold); }
+textarea.form-control { resize: vertical; min-height: 80px; }
+select.form-control { cursor: pointer; }
+
+/* RECEIPT UPLOAD */
+.receipt-upload {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 28px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.18s;
+  position: relative;
+}
+.receipt-upload:hover, .receipt-upload.drag-over {
+  border-color: var(--gold);
+  background: rgba(245,200,66,0.04);
+}
+.receipt-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.upload-icon { font-size: 32px; margin-bottom: 10px; }
+.upload-text { font-size: 13px; font-weight: 500; }
+.upload-hint { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+.upload-preview {
+  width: 100%; max-height: 160px;
+  object-fit: contain;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+/* IMAGE LIGHTBOX */
+.lightbox {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.9);
+  z-index: 1000;
+  align-items: center; justify-content: center;
+  cursor: zoom-out;
+}
+.lightbox.open { display: flex; }
+.lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 10px; }
+
+/* EMPTY STATE */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+.empty-icon { font-size: 48px; margin-bottom: 14px; opacity: 0.5; }
+.empty-title { font-family: var(--font-head); font-size: 16px; color: var(--text); margin-bottom: 6px; }
+.empty-sub { font-size: 13px; }
+
+/* PAGE SECTIONS */
+.page { display: none; }
+.page.active { display: block; }
+
+/* AMBASSADOR LIST */
+.ambassador-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+  padding: 20px;
+}
+.amb-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  display: flex; flex-direction: column; gap: 12px;
+  transition: border-color 0.18s;
+}
+.amb-card:hover { border-color: rgba(245,200,66,0.3); }
+.amb-top { display: flex; align-items: center; gap: 12px; }
+.amb-avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), #e06c00);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-head); font-size: 16px; font-weight: 700; color: #000;
+  flex-shrink: 0;
+}
+.amb-name { font-weight: 600; font-size: 14.5px; }
+.amb-school { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.amb-stats { display: flex; gap: 12px; }
+.amb-stat { flex: 1; background: var(--card); border-radius: 8px; padding: 10px 12px; }
+.amb-stat-label { font-size: 10px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
+.amb-stat-value { font-family: var(--font-head); font-size: 14px; font-weight: 700; margin-top: 3px; }
+.amb-actions { display: flex; gap: 8px; }
+
+/* LOADING */
+.loading-row td { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+
+/* TOAST */
+.toast-container {
+  position: fixed; top: 24px; right: 24px; z-index: 2000;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13.5px; font-weight: 500;
+  box-shadow: var(--shadow);
+  animation: toastIn 0.22s ease;
+  min-width: 240px;
+}
+.toast.success { border-left: 3px solid var(--green); }
+.toast.error { border-left: 3px solid var(--red); }
+.toast.info { border-left: 3px solid var(--blue); }
+@keyframes toastIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* WEEK BADGE */
+.week-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11.5px; font-weight: 500; color: var(--muted);
+}
+
+/* ACTION DOTS */
+.action-menu { position: relative; }
+.action-btn { background: none; border: none; color: var(--muted); cursor: pointer; padding: 5px 8px; border-radius: 7px; transition: all 0.15s; font-size: 16px; }
+.action-btn:hover { background: var(--bg3); color: var(--text); }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 10px; }
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .sidebar { transform: translateX(-100%); }
+  .main { margin-left: 0; padding: 20px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .charts-grid { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">📒</div>
+    <div class="logo-text">CampPlug <span>BOOK LOG</span></div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Main</div>
+    <div class="nav-item active" onclick="showPage('dashboard')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" onclick="showPage('ledger')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Ledger
+      <span class="nav-badge" id="nb-ledger">0</span>
+    </div>
+    <div class="nav-item" onclick="showPage('ambassadors')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Ambassadors
+      <span class="nav-badge" id="nb-ambassadors">0</span>
+    </div>
+  </div>
+
+  <div class="nav-group" style="margin-top: 8px;">
+    <div class="nav-label">Filters</div>
+    <div class="nav-item" onclick="filterStatus('paid')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Paid
+    </div>
+    <div class="nav-item" onclick="filterStatus('pending')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Pending
+    </div>
+    <div class="nav-item" onclick="filterStatus('partial')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Partial
+    </div>
+  </div>
+
+  <div class="sidebar-bottom">
+    <div class="sync-status">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-label">Connecting…</span>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- DASHBOARD PAGE -->
+  <div class="page active" id="page-dashboard">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Book Log</div>
+        <div class="page-sub" id="dash-date">Loading…</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="openModal('modal-entry')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Entry
+        </button>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-grid">
+      <div class="stat-card gold">
+        <div class="stat-icon gold">₦</div>
+        <div class="stat-label">Total Spend</div>
+        <div class="stat-value gold" id="stat-total">₦0</div>
+        <div class="stat-meta" id="stat-total-meta">All time</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-label">Paid Out</div>
+        <div class="stat-value green" id="stat-paid">₦0</div>
+        <div class="stat-meta" id="stat-paid-meta">Settled</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-icon red">⏳</div>
+        <div class="stat-label">Outstanding</div>
+        <div class="stat-value red" id="stat-pending">₦0</div>
+        <div class="stat-meta">Pending + Partial</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-icon blue">👥</div>
+        <div class="stat-label">Ambassadors</div>
+        <div class="stat-value blue" id="stat-amb">0</div>
+        <div class="stat-meta" id="stat-amb-meta">Active</div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Weekly Spend</div>
+            <div class="chart-sub">Total payments per week</div>
+          </div>
+        </div>
+        <canvas id="chart-weekly" height="120"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Payment Status</div>
+            <div class="chart-sub">Distribution</div>
+          </div>
+        </div>
+        <canvas id="chart-status" height="160"></canvas>
+      </div>
+    </div>
+
+    <!-- RECENT ENTRIES -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-title">Recent Entries</div>
+        <button class="btn btn-ghost btn-sm" onclick="showPage('ledger')">View All →</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Receipt</th>
+              <th>Ambassador</th>
+              <th>Week</th>
+              <th>Amount</th>
+              <th>Fee</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="recent-tbody">
+            <tr class="loading-row"><td colspan="6">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEDGER PAGE -->
+  <div class="page" id="page-ledger">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Full Ledger</div>
+        <div class="page-sub">All book entries</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary" onclick="openModal('modal-entry')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Entry
+        </button>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="filter-bar">
+        <div class="search-box">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-input" placeholder="Search entries…" oninput="renderLedger()" />
+        </div>
+        <select class="filter-select" id="filter-week" onchange="renderLedger()">
+          <option value="">All Weeks</option>
+        </select>
+        <select class="filter-select" id="filter-amb" onchange="renderLedger()">
+          <option value="">All Ambassadors</option>
+        </select>
+        <select class="filter-select" id="filter-status" onchange="renderLedger()">
+          <option value="">All Status</option>
+          <option value="paid">Paid</option>
+          <option value="pending">Pending</option>
+          <option value="partial">Partial</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Receipt</th>
+              <th>Ambassador</th>
+              <th>Week</th>
+              <th>Amount</th>
+              <th>Amb. Fee</th>
+              <th>Status</th>
+              <th>Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ledger-tbody">
+            <tr class="loading-row"><td colspan="8">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- AMBASSADORS PAGE -->
+  <div class="page" id="page-ambassadors">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Ambassadors</div>
+        <div class="page-sub">Manage your Campus Plug ambassadors</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary" onclick="openModal('modal-ambassador')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Ambassador
+        </button>
+      </div>
+    </div>
+    <div class="section-card">
+      <div class="ambassador-grid" id="ambassador-grid">
+        <div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--muted);">Loading ambassadors…</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODALS -->
+
+<!-- ADD ENTRY MODAL -->
+<div class="modal-overlay" id="modal-entry">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div class="modal-title" id="entry-modal-title">New Book Entry</div>
+      <button class="btn btn-icon btn-ghost" onclick="closeModal('modal-entry')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Ambassador</label>
+          <select class="form-control" id="entry-ambassador">
+            <option value="">— Select Ambassador —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Week</label>
+          <input type="week" class="form-control" id="entry-week" />
+        </div>
+        <div class="form-group">
+          <label>Amount (₦)</label>
+          <input type="number" class="form-control" id="entry-amount" placeholder="e.g. 25000" />
+        </div>
+        <div class="form-group">
+          <label>Ambassador Fee (₦)</label>
+          <input type="number" class="form-control" id="entry-fee" placeholder="e.g. 5000" />
+        </div>
+        <div class="form-group">
+          <label>Payment Status</label>
+          <select class="form-control" id="entry-status">
+            <option value="pending">Pending</option>
+            <option value="paid">Paid</option>
+            <option value="partial">Partial</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" class="form-control" id="entry-date" />
+        </div>
+        <div class="form-group full">
+          <label>Notes</label>
+          <textarea class="form-control" id="entry-notes" placeholder="Add any notes or description…"></textarea>
+        </div>
+        <div class="form-group full">
+          <label>Receipt Image</label>
+          <div class="receipt-upload" id="receipt-drop">
+            <input type="file" accept="image/*" id="receipt-file" onchange="previewReceipt(event)" />
+            <div class="upload-icon">🧾</div>
+            <div class="upload-text">Drop receipt here or click to upload</div>
+            <div class="upload-hint">JPG, PNG, WEBP — max 5MB</div>
+            <img id="receipt-preview" class="upload-preview" style="display:none" />
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-entry')">Cancel</button>
+      <button class="btn btn-primary" id="entry-save-btn" onclick="saveEntry()">
+        <span id="entry-save-label">Save Entry</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD AMBASSADOR MODAL -->
+<div class="modal-overlay" id="modal-ambassador">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="amb-modal-title">New Ambassador</div>
+      <button class="btn btn-icon btn-ghost" onclick="closeModal('modal-ambassador')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" class="form-control" id="amb-name" placeholder="e.g. Tunde Adeyemi" />
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="tel" class="form-control" id="amb-phone" placeholder="e.g. 08012345678" />
+        </div>
+        <div class="form-group full">
+          <label>University</label>
+          <input type="text" class="form-control" id="amb-school" placeholder="e.g. University of Lagos" />
+        </div>
+        <div class="form-group">
+          <label>Referral Code</label>
+          <input type="text" class="form-control" id="amb-code" placeholder="e.g. CP-UNILAG-001" />
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select class="form-control" id="amb-status">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Notes</label>
+          <textarea class="form-control" id="amb-notes" placeholder="Any extra info…" style="min-height:60px"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-ambassador')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAmbassador()">Save Ambassador</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt="Receipt" />
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let entries = [];
+let ambassadors = [];
+let editingEntryId = null;
+let editingAmbId = null;
+let uploadedImageUrl = null;
+let weeklyChart = null;
+let statusChart = null;
+let currentFilter = '';
+
+// ============================================================
+// WAIT FOR FIREBASE
+// ============================================================
+window.addEventListener('firebase-ready', async () => {
+  setSync(true);
+  await Promise.all([loadAmbassadors(), loadEntries()]);
+  renderAll();
+});
+
+// Detect if Firebase isn't configured
+setTimeout(() => {
+  if (!window._db) {
+    setSync(false);
+    toast('Firebase not configured — see setup guide below', 'error');
+    // Fallback: use demo local data
+    useDemoData();
+  }
+}, 3000);
+
+function setSync(ok) {
+  document.getElementById('sync-dot').style.background = ok ? 'var(--green)' : 'var(--red)';
+  document.getElementById('sync-label').textContent = ok ? 'Connected' : 'Not connected';
+}
+
+// ============================================================
+// DEMO DATA (when Firebase not configured)
+// ============================================================
+function useDemoData() {
+  ambassadors = [
+    { id: 'amb1', name: 'Tunde Adeyemi', school: 'University of Lagos', phone: '08012345678', code: 'CP-UNILAG-001', status: 'active', notes: '' },
+    { id: 'amb2', name: 'Chisom Eze', school: 'UNIBEN', phone: '08098765432', code: 'CP-UNIBEN-001', status: 'active', notes: '' },
+    { id: 'amb3', name: 'Fatima Bello', school: 'ABU Zaria', phone: '08056789012', code: 'CP-ABU-001', status: 'inactive', notes: '' },
+  ];
+  entries = [
+    { id: 'e1', ambassadorId: 'amb1', ambassadorName: 'Tunde Adeyemi', week: '2024-W23', amount: 35000, fee: 7000, status: 'paid', date: '2024-06-08', notes: 'Flyers printed', receiptUrl: null, createdAt: new Date() },
+    { id: 'e2', ambassadorId: 'amb2', ambassadorName: 'Chisom Eze', week: '2024-W23', amount: 20000, fee: 4000, status: 'pending', date: '2024-06-09', notes: 'Bus advertising', receiptUrl: null, createdAt: new Date() },
+    { id: 'e3', ambassadorId: 'amb1', ambassadorName: 'Tunde Adeyemi', week: '2024-W24', amount: 15000, fee: 3000, status: 'paid', date: '2024-06-14', notes: 'Social media boost', receiptUrl: null, createdAt: new Date() },
+    { id: 'e4', ambassadorId: 'amb3', ambassadorName: 'Fatima Bello', week: '2024-W22', amount: 25000, fee: 5000, status: 'partial', date: '2024-06-01', notes: 'Campus event', receiptUrl: null, createdAt: new Date() },
+  ];
+  renderAll();
+}
+
+// ============================================================
+// FIREBASE CRUD
+// ============================================================
+async function loadAmbassadors() {
+  try {
+    const { collection, getDocs, query, orderBy } = window._fb;
+    const snap = await getDocs(query(collection(window._db, 'ambassadors'), orderBy('name')));
+    ambassadors = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) { console.error(e); }
+}
+
+async function loadEntries() {
+  try {
+    const { collection, getDocs, query, orderBy } = window._fb;
+    const snap = await getDocs(query(collection(window._db, 'entries'), orderBy('createdAt', 'desc')));
+    entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) { console.error(e); }
+}
+
+async function saveEntry() {
+  const btn = document.getElementById('entry-save-btn');
+  const label = document.getElementById('entry-save-label');
+  const ambId = document.getElementById('entry-ambassador').value;
+  const amb = ambassadors.find(a => a.id === ambId);
+
+  const data = {
+    ambassadorId: ambId,
+    ambassadorName: amb ? amb.name : '',
+    week: document.getElementById('entry-week').value,
+    amount: parseFloat(document.getElementById('entry-amount').value) || 0,
+    fee: parseFloat(document.getElementById('entry-fee').value) || 0,
+    status: document.getElementById('entry-status').value,
+    date: document.getElementById('entry-date').value,
+    notes: document.getElementById('entry-notes').value,
+    receiptUrl: uploadedImageUrl || null,
+  };
+
+  if (!data.ambassadorId || !data.week || !data.amount) {
+    toast('Please fill in ambassador, week and amount', 'error'); return;
+  }
+
+  label.textContent = 'Saving…'; btn.disabled = true;
+
+  try {
+    if (window._db) {
+      const { collection, addDoc, updateDoc, doc, serverTimestamp } = window._fb;
+      if (editingEntryId) {
+        await updateDoc(doc(window._db, 'entries', editingEntryId), data);
+        entries = entries.map(e => e.id === editingEntryId ? { ...e, ...data } : e);
+        toast('Entry updated!', 'success');
+      } else {
+        data.createdAt = serverTimestamp();
+        const ref = await addDoc(collection(window._db, 'entries'), data);
+        entries.unshift({ id: ref.id, ...data });
+        toast('Entry saved!', 'success');
+      }
+    } else {
+      // Demo mode
+      if (editingEntryId) {
+        entries = entries.map(e => e.id === editingEntryId ? { ...e, ...data } : e);
+      } else {
+        entries.unshift({ id: 'e' + Date.now(), ...data, createdAt: new Date() });
+      }
+      toast('Saved (demo mode)', 'info');
+    }
+    closeModal('modal-entry');
+    renderAll();
+  } catch(e) {
+    toast('Error saving: ' + e.message, 'error');
+  }
+  label.textContent = editingEntryId ? 'Update Entry' : 'Save Entry';
+  btn.disabled = false;
+}
+
+async function deleteEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  try {
+    if (window._db) {
+      const { deleteDoc, doc } = window._fb;
+      await deleteDoc(doc(window._db, 'entries', id));
+    }
+    entries = entries.filter(e => e.id !== id);
+    toast('Entry deleted', 'info');
+    renderAll();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function saveAmbassador() {
+  const data = {
+    name: document.getElementById('amb-name').value.trim(),
+    phone: document.getElementById('amb-phone').value.trim(),
+    school: document.getElementById('amb-school').value.trim(),
+    code: document.getElementById('amb-code').value.trim(),
+    status: document.getElementById('amb-status').value,
+    notes: document.getElementById('amb-notes').value.trim(),
+  };
+
+  if (!data.name || !data.school) { toast('Name and university required', 'error'); return; }
+
+  try {
+    if (window._db) {
+      const { collection, addDoc, updateDoc, doc, serverTimestamp } = window._fb;
+      if (editingAmbId) {
+        await updateDoc(doc(window._db, 'ambassadors', editingAmbId), data);
+        ambassadors = ambassadors.map(a => a.id === editingAmbId ? { ...a, ...data } : a);
+        toast('Ambassador updated!', 'success');
+      } else {
+        data.createdAt = serverTimestamp();
+        const ref = await addDoc(collection(window._db, 'ambassadors'), data);
+        ambassadors.push({ id: ref.id, ...data });
+        toast('Ambassador added!', 'success');
+      }
+    } else {
+      if (editingAmbId) {
+        ambassadors = ambassadors.map(a => a.id === editingAmbId ? { ...a, ...data } : a);
+      } else {
+        ambassadors.push({ id: 'a' + Date.now(), ...data });
+      }
+      toast('Saved (demo mode)', 'info');
+    }
+    closeModal('modal-ambassador');
+    renderAll();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function deleteAmbassador(id) {
+  if (!confirm('Delete this ambassador? This won\'t delete their entries.')) return;
+  try {
+    if (window._db) {
+      const { deleteDoc, doc } = window._fb;
+      await deleteDoc(doc(window._db, 'ambassadors', id));
+    }
+    ambassadors = ambassadors.filter(a => a.id !== id);
+    toast('Ambassador removed', 'info');
+    renderAll();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+// ============================================================
+// IMAGE UPLOAD
+// ============================================================
+async function previewReceipt(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const preview = document.getElementById('receipt-preview');
+  const reader = new FileReader();
+  reader.onload = ev => { preview.src = ev.target.result; preview.style.display = 'block'; };
+  reader.readAsDataURL(file);
+
+  // Upload to Firebase Storage
+  if (window._storage) {
+    try {
+      const { ref, uploadBytes, getDownloadURL } = window._fb;
+      const storageRef = ref(window._storage, `receipts/${Date.now()}_${file.name}`);
+      const snap = await uploadBytes(storageRef, file);
+      uploadedImageUrl = await getDownloadURL(snap.ref);
+      toast('Receipt uploaded!', 'success');
+    } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
+  } else {
+    uploadedImageUrl = URL.createObjectURL(file); // demo fallback
+  }
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function renderAll() {
+  updateStats();
+  renderCharts();
+  renderRecentEntries();
+  renderLedger();
+  renderAmbassadors();
+  updateFilters();
+  updateBadges();
+  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('en-NG', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+
+function updateStats() {
+  const total = entries.reduce((s,e) => s + (e.amount||0), 0);
+  const paid = entries.filter(e => e.status === 'paid').reduce((s,e) => s + (e.amount||0), 0);
+  const pending = entries.filter(e => e.status !== 'paid').reduce((s,e) => s + (e.amount||0), 0);
+  document.getElementById('stat-total').textContent = fmt(total);
+  document.getElementById('stat-paid').textContent = fmt(paid);
+  document.getElementById('stat-pending').textContent = fmt(pending);
+  document.getElementById('stat-amb').textContent = ambassadors.filter(a => a.status === 'active').length;
+  document.getElementById('stat-total-meta').textContent = `${entries.length} entries`;
+  document.getElementById('stat-paid-meta').textContent = entries.filter(e=>e.status==='paid').length + ' entries';
+  document.getElementById('stat-amb-meta').textContent = `${ambassadors.length} total`;
+}
+
+function renderCharts() {
+  // Weekly spend chart
+  const weekMap = {};
+  entries.forEach(e => {
+    if (e.week) weekMap[e.week] = (weekMap[e.week]||0) + (e.amount||0);
+  });
+  const weeks = Object.keys(weekMap).sort().slice(-8);
+  const vals = weeks.map(w => weekMap[w]);
+
+  const wCtx = document.getElementById('chart-weekly').getContext('2d');
+  if (weeklyChart) weeklyChart.destroy();
+  weeklyChart = new Chart(wCtx, {
+    type: 'bar',
+    data: {
+      labels: weeks.map(w => w.replace('-W', ' W')),
+      datasets: [{
+        label: 'Spend (₦)',
+        data: vals,
+        backgroundColor: 'rgba(245,200,66,0.7)',
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#7a85a3', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#7a85a3', font: { size: 11 }, callback: v => '₦' + (v>=1000?Math.round(v/1000)+'k':v) } }
+      }
+    }
+  });
+
+  // Status pie
+  const paidC = entries.filter(e=>e.status==='paid').length;
+  const pendC = entries.filter(e=>e.status==='pending').length;
+  const partC = entries.filter(e=>e.status==='partial').length;
+  const sCtx = document.getElementById('chart-status').getContext('2d');
+  if (statusChart) statusChart.destroy();
+  statusChart = new Chart(sCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Paid', 'Pending', 'Partial'],
+      datasets: [{ data: [paidC, pendC, partC], backgroundColor: ['#22d68a','#f5c842','#4f8ef7'], borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true,
+      cutout: '65%',
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#7a85a3', font: { size: 12 }, padding: 16, usePointStyle: true } }
+      }
+    }
+  });
+}
+
+function renderRecentEntries() {
+  const tbody = document.getElementById('recent-tbody');
+  const recent = entries.slice(0,5);
+  if (!recent.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">No entries yet</div><div class="empty-sub">Add your first book entry</div></div></td></tr>`; return; }
+  tbody.innerHTML = recent.map(e => entryRow(e, false)).join('');
+}
+
+function renderLedger() {
+  const search = (document.getElementById('search-input')?.value||'').toLowerCase();
+  const weekF = document.getElementById('filter-week')?.value||'';
+  const ambF = document.getElementById('filter-amb')?.value||'';
+  const statusF = document.getElementById('filter-status')?.value || currentFilter;
+
+  let filtered = entries.filter(e => {
+    const matchSearch = !search || (e.ambassadorName||'').toLowerCase().includes(search) || (e.notes||'').toLowerCase().includes(search) || (e.week||'').includes(search);
+    const matchWeek = !weekF || e.week === weekF;
+    const matchAmb = !ambF || e.ambassadorId === ambF;
+    const matchStatus = !statusF || e.status === statusF;
+    return matchSearch && matchWeek && matchAmb && matchStatus;
+  });
+
+  const tbody = document.getElementById('ledger-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No entries found</div><div class="empty-sub">Try adjusting your filters</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(e => entryRow(e, true)).join('');
+}
+
+function entryRow(e, showActions) {
+  const statusBadge = { paid: 'badge-paid', pending: 'badge-pending', partial: 'badge-partial' }[e.status] || '';
+  const statusLabel = { paid: '✓ Paid', pending: '⏳ Pending', partial: '~ Partial' }[e.status] || e.status;
+  const initials = (e.ambassadorName||'?').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+
+  const receipt = e.receiptUrl
+    ? `<img src="${e.receiptUrl}" class="receipt-thumb" onclick="openLightbox('${e.receiptUrl}')" title="View receipt" />`
+    : `<div class="no-receipt" title="No receipt">🧾</div>`;
+
+  const actions = showActions ? `
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="editEntry('${e.id}')" title="Edit">✏️</button>
+      <button class="btn btn-danger btn-sm btn-icon" onclick="deleteEntry('${e.id}')" title="Delete">🗑</button>
+    </div>` : '';
+
+  const cols = showActions
+    ? `<td>${receipt}</td>
+       <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar">${initials}</div>${e.ambassadorName||'—'}</div></td>
+       <td><span class="week-chip">📅 ${e.week||'—'}</span></td>
+       <td class="amount-val">${fmt(e.amount)}</td>
+       <td class="amount-val" style="color:var(--gold)">${fmt(e.fee)}</td>
+       <td><span class="badge ${statusBadge}"><span class="badge-dot"></span>${statusLabel}</span></td>
+       <td style="max-width:160px;color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.notes||'—'}</td>
+       <td>${actions}</td>`
+    : `<td>${receipt}</td>
+       <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar">${initials}</div>${e.ambassadorName||'—'}</div></td>
+       <td><span class="week-chip">📅 ${e.week||'—'}</span></td>
+       <td class="amount-val">${fmt(e.amount)}</td>
+       <td class="amount-val" style="color:var(--gold)">${fmt(e.fee)}</td>
+       <td><span class="badge ${statusBadge}"><span class="badge-dot"></span>${statusLabel}</span></td>`;
+
+  return `<tr>${cols}</tr>`;
+}
+
+function renderAmbassadors() {
+  const grid = document.getElementById('ambassador-grid');
+  if (!ambassadors.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1"><div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No ambassadors yet</div><div class="empty-sub">Add your first Campus Plug ambassador</div></div></div>`;
+    return;
+  }
+
+  grid.innerHTML = ambassadors.map(a => {
+    const initials = a.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+    const ambEntries = entries.filter(e => e.ambassadorId === a.id);
+    const totalPaid = ambEntries.filter(e=>e.status==='paid').reduce((s,e)=>s+(e.amount||0),0);
+    const totalFees = ambEntries.reduce((s,e)=>s+(e.fee||0),0);
+    const statusBg = a.status === 'active' ? 'var(--green)' : 'var(--muted)';
+
+    return `<div class="amb-card">
+      <div class="amb-top">
+        <div class="amb-avatar">${initials}</div>
+        <div>
+          <div class="amb-name">${a.name}</div>
+          <div class="amb-school">${a.school||'—'}</div>
+        </div>
+        <div style="margin-left:auto;width:8px;height:8px;border-radius:50%;background:${statusBg};flex-shrink:0;margin-top:4px"></div>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);display:flex;gap:6px">
+        <span>🏷 ${a.code||'No code'}</span>
+        <span>·</span>
+        <span>📱 ${a.phone||'—'}</span>
+      </div>
+      <div class="amb-stats">
+        <div class="amb-stat">
+          <div class="amb-stat-label">Paid</div>
+          <div class="amb-stat-value" style="color:var(--green)">${fmt(totalPaid)}</div>
+        </div>
+        <div class="amb-stat">
+          <div class="amb-stat-label">Total Fees</div>
+          <div class="amb-stat-value" style="color:var(--gold)">${fmt(totalFees)}</div>
+        </div>
+        <div class="amb-stat">
+          <div class="amb-stat-label">Entries</div>
+          <div class="amb-stat-value">${ambEntries.length}</div>
+        </div>
+      </div>
+      <div class="amb-actions">
+        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="editAmbassador('${a.id}')">✏️ Edit</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteAmbassador('${a.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateFilters() {
+  // Week filter
+  const weeks = [...new Set(entries.map(e=>e.week).filter(Boolean))].sort().reverse();
+  const wSel = document.getElementById('filter-week');
+  wSel.innerHTML = '<option value="">All Weeks</option>' + weeks.map(w => `<option value="${w}">${w}</option>`).join('');
+
+  // Ambassador filter
+  const ambSel = document.getElementById('filter-amb');
+  ambSel.innerHTML = '<option value="">All Ambassadors</option>' + ambassadors.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+
+  // Entry form ambassador dropdown
+  const entryAmb = document.getElementById('entry-ambassador');
+  entryAmb.innerHTML = '<option value="">— Select Ambassador —</option>' + ambassadors.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+}
+
+function updateBadges() {
+  document.getElementById('nb-ledger').textContent = entries.length;
+  document.getElementById('nb-ambassadors').textContent = ambassadors.length;
+}
+
+// ============================================================
+// EDIT
+// ============================================================
+function editEntry(id) {
+  const e = entries.find(x => x.id === id);
+  if (!e) return;
+  editingEntryId = id;
+  uploadedImageUrl = e.receiptUrl || null;
+
+  document.getElementById('entry-modal-title').textContent = 'Edit Entry';
+  document.getElementById('entry-save-label').textContent = 'Update Entry';
+  document.getElementById('entry-ambassador').value = e.ambassadorId || '';
+  document.getElementById('entry-week').value = e.week || '';
+  document.getElementById('entry-amount').value = e.amount || '';
+  document.getElementById('entry-fee').value = e.fee || '';
+  document.getElementById('entry-status').value = e.status || 'pending';
+  document.getElementById('entry-date').value = e.date || '';
+  document.getElementById('entry-notes').value = e.notes || '';
+
+  const preview = document.getElementById('receipt-preview');
+  if (e.receiptUrl) { preview.src = e.receiptUrl; preview.style.display = 'block'; }
+  else { preview.style.display = 'none'; }
+
+  openModal('modal-entry');
+}
+
+function editAmbassador(id) {
+  const a = ambassadors.find(x => x.id === id);
+  if (!a) return;
+  editingAmbId = id;
+  document.getElementById('amb-modal-title').textContent = 'Edit Ambassador';
+  document.getElementById('amb-name').value = a.name || '';
+  document.getElementById('amb-phone').value = a.phone || '';
+  document.getElementById('amb-school').value = a.school || '';
+  document.getElementById('amb-code').value = a.code || '';
+  document.getElementById('amb-status').value = a.status || 'active';
+  document.getElementById('amb-notes').value = a.notes || '';
+  openModal('modal-ambassador');
+}
+
+// ============================================================
+// MODAL
+// ============================================================
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  if (id === 'modal-entry') {
+    editingEntryId = null; uploadedImageUrl = null;
+    document.getElementById('entry-modal-title').textContent = 'New Book Entry';
+    document.getElementById('entry-save-label').textContent = 'Save Entry';
+    document.getElementById('receipt-preview').style.display = 'none';
+    document.getElementById('receipt-file').value = '';
+    ['entry-ambassador','entry-week','entry-amount','entry-fee','entry-notes','entry-date'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('entry-status').value = 'pending';
+  }
+  if (id === 'modal-ambassador') {
+    editingAmbId = null;
+    document.getElementById('amb-modal-title').textContent = 'New Ambassador';
+    ['amb-name','amb-phone','amb-school','amb-code','amb-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('amb-status').value = 'active';
+  }
+}
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); });
+});
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + name + "'")) n.classList.add('active');
+  });
+  currentFilter = '';
+  if (name === 'ledger') { document.getElementById('filter-status').value = ''; renderLedger(); }
+}
+
+function filterStatus(s) {
+  currentFilter = s;
+  showPage('ledger');
+  document.getElementById('filter-status').value = s;
+  renderLedger();
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+}
+
+// ============================================================
+// LIGHTBOX
+// ============================================================
+function openLightbox(url) {
+  document.getElementById('lightbox-img').src = url;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+
+// ============================================================
+// TOAST
+// ============================================================
+function toast(msg, type='info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const icons = { success:'✅', error:'❌', info:'ℹ️' };
+  el.innerHTML = `<span>${icons[type]||''}</span><span>${msg}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ============================================================
+// FORMAT
+// ============================================================
+function fmt(n) {
+  if (!n && n !== 0) return '—';
+  return '₦' + Number(n).toLocaleString('en-NG');
+}
+
+// Init date
+document.getElementById('dash-date').textContent = new Date().toLocaleDateString('en-NG', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+</script>
+</body>
+</html>
