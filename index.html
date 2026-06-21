@@ -266,6 +266,93 @@ select.f-control { cursor: pointer; }
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 10px; }
 
+/* ── LOGIN SCREEN ── */
+#login-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+#login-screen.hidden { display: none; }
+.login-box {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 22px;
+  padding: 44px 40px 36px;
+  width: 100%; max-width: 400px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.55);
+  position: relative;
+  overflow: hidden;
+}
+.login-box::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--gold), #e06c00, var(--purple));
+}
+.login-logo {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 32px;
+}
+.login-logo-mark {
+  width: 46px; height: 46px; border-radius: 13px;
+  background: linear-gradient(135deg, var(--gold), #c47a00);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+}
+.login-logo-text { font-family: var(--font-head); font-size: 18px; font-weight: 700; line-height: 1.2; }
+.login-logo-text small { display: block; font-size: 10px; color: var(--muted); font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; }
+.login-heading { font-family: var(--font-head); font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.login-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+.login-fields { display: flex; flex-direction: column; gap: 14px; }
+.login-field { display: flex; flex-direction: column; gap: 6px; }
+.login-field label { font-size: 12px; font-weight: 500; color: var(--muted2); }
+.login-input-wrap { position: relative; }
+.login-input {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 11px; padding: 12px 14px;
+  color: var(--text); font-size: 14px; font-family: var(--font-body);
+  outline: none; width: 100%;
+  transition: border-color 0.18s;
+}
+.login-input:focus { border-color: var(--gold); }
+.login-input.err { border-color: var(--red); }
+.pw-toggle {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 16px; padding: 4px;
+}
+.login-err {
+  background: rgba(245,95,90,0.1); border: 1px solid rgba(245,95,90,0.25);
+  border-radius: 9px; padding: 10px 14px;
+  font-size: 12.5px; color: var(--red); font-weight: 500;
+  display: none; align-items: center; gap: 8px;
+}
+.login-err.show { display: flex; }
+.login-btn {
+  width: 100%; padding: 13px; border-radius: 11px;
+  background: var(--gold); color: #0b0d17;
+  font-size: 14px; font-weight: 700; font-family: var(--font-head);
+  border: none; cursor: pointer; margin-top: 6px;
+  transition: all 0.18s;
+}
+.login-btn:hover { background: #ffd54f; box-shadow: 0 6px 22px rgba(245,200,66,0.3); transform: translateY(-1px); }
+.login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.login-footer { text-align: center; margin-top: 24px; font-size: 11.5px; color: var(--muted); }
+
+/* hide app until logged in */
+body.locked .sidebar,
+body.locked .main { display: none; }
+
+/* logout btn in sidebar */
+.logout-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 10px; border-radius: 10px;
+  font-size: 13px; font-weight: 500; color: var(--muted2);
+  cursor: pointer; transition: all 0.16s; margin-top: 10px;
+  background: none; border: none; font-family: var(--font-body); width: 100%;
+}
+.logout-btn:hover { background: rgba(245,95,90,0.1); color: var(--red); }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 860px) {
   .sidebar { display: none; }
@@ -277,6 +364,36 @@ select.f-control { cursor: pointer; }
 </style>
 </head>
 <body>
+
+<!-- ══ LOGIN SCREEN ══ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-mark">📒</div>
+      <div class="login-logo-text">Campus Plug <small>Book Log</small></div>
+    </div>
+    <div class="login-heading">Welcome back</div>
+    <div class="login-sub">Sign in to access your financial records</div>
+
+    <div class="login-fields">
+      <div class="login-field">
+        <label>Email address</label>
+        <input type="email" id="login-email" class="login-input" placeholder="you@example.com" autocomplete="email" />
+      </div>
+      <div class="login-field">
+        <label>Password</label>
+        <div class="login-input-wrap">
+          <input type="password" id="login-pw" class="login-input" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" />
+          <button class="pw-toggle" onclick="togglePw()" tabindex="-1" id="pw-eye">👁</button>
+        </div>
+      </div>
+      <div class="login-err" id="login-err">❌ <span id="login-err-msg">Invalid email or password</span></div>
+      <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
+    </div>
+
+    <div class="login-footer">Campus Plug — Internal Finance Tool</div>
+  </div>
+</div>
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
@@ -325,6 +442,9 @@ select.f-control { cursor: pointer; }
       <div class="conn-dot" id="conn-dot"></div>
       <span id="conn-label">Connecting…</span>
     </div>
+    <button class="logout-btn" onclick="doLogout()">
+      <span>🚪</span> Sign Out
+    </button>
   </div>
 </aside>
 
@@ -499,8 +619,12 @@ select.f-control { cursor: pointer; }
           </datalist>
         </div>
         <div class="f-group" id="amb-field-wrap">
-          <label>Ambassador</label>
-          <select class="f-control" id="e-amb"><option value="">— None / N/A —</option></select>
+          <label>Ambassador (select existing)</label>
+          <select class="f-control" id="e-amb" onchange="onAmbSelect()"><option value="">— None / N/A —</option></select>
+        </div>
+        <div class="f-group" id="amb-manual-wrap">
+          <label>Or enter ambassador name manually</label>
+          <input type="text" class="f-control" id="e-amb-manual" placeholder="e.g. Chidi Okonkwo" oninput="onAmbManual()" />
         </div>
         <div class="f-group">
           <label>Week</label>
@@ -581,6 +705,68 @@ select.f-control { cursor: pointer; }
 
 <script>
 // ══════════════════════════════════════════════
+// AUTH — hardcoded credentials
+// ══════════════════════════════════════════════
+const AUTH_EMAIL = 'sumudinnovation4@gmail.com';
+const AUTH_PW    = '#123456#Mm';
+const SESSION_KEY = 'cp_booklog_auth';
+
+function checkSession() {
+  if (sessionStorage.getItem(SESSION_KEY) === '1') {
+    unlockApp();
+  } else {
+    document.body.classList.add('locked');
+  }
+}
+
+function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pw    = document.getElementById('login-pw').value;
+  const btn   = document.getElementById('login-btn');
+  const err   = document.getElementById('login-err');
+
+  err.classList.remove('show');
+  document.getElementById('login-email').classList.remove('err');
+  document.getElementById('login-pw').classList.remove('err');
+
+  if (email === AUTH_EMAIL && pw === AUTH_PW) {
+    btn.textContent = 'Signing in…'; btn.disabled = true;
+    sessionStorage.setItem(SESSION_KEY, '1');
+    setTimeout(() => {
+      unlockApp();
+      btn.textContent = 'Sign In'; btn.disabled = false;
+    }, 500);
+  } else {
+    document.getElementById('login-email').classList.add('err');
+    document.getElementById('login-pw').classList.add('err');
+    document.getElementById('login-err-msg').textContent =
+      email !== AUTH_EMAIL ? 'Email not recognised' : 'Incorrect password';
+    err.classList.add('show');
+  }
+}
+
+function unlockApp() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.body.classList.remove('locked');
+}
+
+function doLogout() {
+  if (!confirm('Sign out?')) return;
+  sessionStorage.removeItem(SESSION_KEY);
+  location.reload();
+}
+
+function togglePw() {
+  const inp = document.getElementById('login-pw');
+  const eye = document.getElementById('pw-eye');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  eye.textContent = inp.type === 'password' ? '👁' : '🙈';
+}
+
+// Run on load
+checkSession();
+
+// ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
 let entries = [], ambassadors = [];
@@ -651,17 +837,38 @@ async function loadAmbassadors() {
 }
 
 // ══════════════════════════════════════════════
+// MANUAL AMBASSADOR HELPERS
+// ══════════════════════════════════════════════
+function onAmbSelect() {
+  const sel = document.getElementById('e-amb');
+  if (sel.value) document.getElementById('e-amb-manual').value = '';
+}
+function onAmbManual() {
+  const manual = document.getElementById('e-amb-manual').value.trim();
+  if (manual) document.getElementById('e-amb').value = '';
+}
+function getAmbData() {
+  const selId = document.getElementById('e-amb').value;
+  const manual = document.getElementById('e-amb-manual').value.trim();
+  if (selId) {
+    const a = ambassadors.find(x => x.id === selId);
+    return { ambassadorId: selId, ambassadorName: a ? a.name : '' };
+  }
+  if (manual) return { ambassadorId: '', ambassadorName: manual };
+  return { ambassadorId: '', ambassadorName: '' };
+}
+
+// ══════════════════════════════════════════════
 // SAVE ENTRY
 // ══════════════════════════════════════════════
 async function saveEntry() {
-  const ambId = document.getElementById('e-amb').value;
-  const amb = ambassadors.find(a => a.id === ambId);
+  const { ambassadorId, ambassadorName } = getAmbData();
   const data = {
     type: activeEntryType,
     desc: document.getElementById('e-desc').value.trim(),
     category: document.getElementById('e-category').value.trim(),
-    ambassadorId: ambId || '',
-    ambassadorName: amb ? amb.name : '',
+    ambassadorId,
+    ambassadorName,
     week: document.getElementById('e-week').value,
     amount: parseFloat(document.getElementById('e-amount').value) || 0,
     status: document.getElementById('e-status').value,
@@ -721,6 +928,7 @@ function editEntry(id) {
   document.getElementById('e-amount').value = e.amount || '';
   document.getElementById('e-category').value = e.category || '';
   document.getElementById('e-amb').value = e.ambassadorId || '';
+  document.getElementById('e-amb-manual').value = (!e.ambassadorId && e.ambassadorName) ? e.ambassadorName : '';
   document.getElementById('e-week').value = e.week || '';
   document.getElementById('e-date').value = e.date || '';
   document.getElementById('e-status').value = e.status || 'paid';
@@ -1030,7 +1238,7 @@ function closeModal(id) {
     editEntryId = null;
     document.getElementById('entry-title').textContent = 'New Entry';
     document.getElementById('e-save-label').textContent = 'Save Entry';
-    ['e-desc','e-amount','e-category','e-week','e-date','e-notes'].forEach(x=>document.getElementById(x).value='');
+    ['e-desc','e-amount','e-category','e-week','e-date','e-notes','e-amb-manual'].forEach(x=>document.getElementById(x).value='');
     document.getElementById('e-status').value='paid';
     document.getElementById('e-amb').value='';
     setEntryType('expense');
